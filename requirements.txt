@@ -1,0 +1,6 @@
+pyrofork>=2.3.69
+TgCrypto>=1.2.5
+aiohttp>=3.10.11
+Flask>=3.1.0
+psutil>=6.1.0
+python-dotenv>=1.0.1

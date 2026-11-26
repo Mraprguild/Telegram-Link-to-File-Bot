@@ -1,0 +1,27 @@
+services:
+  - type: worker
+    name: telegram-link-file-bot
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    envVars:
+      - key: API_ID
+        sync: false
+      - key: API_HASH
+        sync: false
+      - key: BOT_TOKEN
+        sync: false
+      - key: USER_SESSION
+        sync: false
+      - key: STORAGE_CHAT_ID
+        sync: false
+      - key: ADMIN_IDS
+        value: ""
+      - key: DASHBOARD_TOKEN
+        sync: false
+      - key: MAX_FILE_SIZE_GB
+        value: "20"
+      - key: PART_SIZE_MB
+        value: "1900"
+      - key: MAX_CONCURRENT_JOBS
+        value: "1"
