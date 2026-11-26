@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Telegram Transfer Control</title>
+<style>
+:root{color-scheme:dark;--bg:#080d19;--panel:#111a2c;--line:#263653;--muted:#9aabc7;--text:#edf4ff;--blue:#5c9dff;--cyan:#54e1dc;--green:#5be0a1}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#14294a 0,#080d19 55%);color:var(--text);font:15px/1.5 Inter,system-ui,sans-serif}
+main{max-width:1120px;margin:auto;padding:28px 18px 60px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+h1{font-size:clamp(24px,5vw,36px);margin:0;letter-spacing:-1px}.sub{color:var(--muted);margin-top:5px}.pill{border:1px solid #245c4c;background:#103528;color:#8cf0bd;border-radius:99px;padding:7px 12px;font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.card{background:linear-gradient(145deg,#15223a,#0f1728);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:0 12px 32px #0003}
+.label{color:var(--muted);font-size:13px}.value{font-size:27px;font-weight:750;margin-top:7px;letter-spacing:-.5px}.unit{font-size:13px;color:var(--muted);font-weight:500}
+.section{margin-top:18px}.section h2{font-size:18px;margin:0 0 12px}.wide{grid-column:span 2}.bar{height:8px;border-radius:10px;background:#263653;overflow:hidden;margin-top:12px}.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--cyan));border-radius:10px;transition:width .5s}
+.jobs{display:grid;gap:10px}.job{padding:14px;border:1px solid var(--line);border-radius:13px;background:#0c1526}.jobtop{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.muted{color:var(--muted);font-size:13px}.empty{color:var(--muted);padding:20px;text-align:center;border:1px dashed var(--line);border-radius:13px}
+footer{margin-top:20px;color:var(--muted);font-size:12px;text-align:center}
+@media(max-width:760px){.grid{grid-template-columns:repeat(2,1fr)}.wide{grid-column:span 2}.value{font-size:23px}}@media(max-width:390px){.grid{grid-template-columns:1fr}.wide{grid-column:span 1}}
+</style></head>
+<body><main>
+<div class="top"><div><h1>Transfer Control</h1><div class="sub">Telegram Link-to-File Bot · live server monitoring</div></div><div class="pill" id="botState">● Connecting…</div></div>
+<div class="grid">
+<div class="card"><div class="label">Completed transfers</div><div class="value" id="completed">—</div></div>
+<div class="card"><div class="label">Active transfers</div><div class="value" id="active">—</div></div>
+<div class="card"><div class="label">Failed transfers</div><div class="value" id="failed">—</div></div>
+<div class="card"><div class="label">Total transferred</div><div class="value" id="total">—</div></div>
+<div class="card"><div class="label">CPU usage</div><div class="value" id="cpu">—</div><div class="bar"><i id="cpuBar"></i></div></div>
+<div class="card"><div class="label">Memory usage</div><div class="value" id="ram">—</div><div class="bar"><i id="ramBar"></i></div></div>
+<div class="card"><div class="label">Disk usage</div><div class="value" id="disk">—</div><div class="bar"><i id="diskBar"></i></div></div>
+<div class="card"><div class="label">Process uptime</div><div class="value" id="uptime">—</div></div>
+<div class="card wide"><div class="label">Server memory</div><div class="value" id="memoryDetail">—</div><div class="muted">Used / total system memory</div></div>
+<div class="card wide"><div class="label">System uptime</div><div class="value" id="systemUptime">—</div><div class="muted">Host operating system uptime</div></div>
+</div>
+<div class="section"><h2>Live transfers</h2><div class="jobs" id="jobs"><div class="empty">Waiting for transfer activity…</div></div></div>
+<footer>Auto-refreshes every 3 seconds · Keep dashboard token private</footer>
+</main>
+<script>
+const params=new URLSearchParams(location.search), token=params.get('token')||'';
+const fmtBytes=n=>{let u=['B','KB','MB','GB','TB'],i=0;while(n>=1024&&i<u.length-1){n/=1024;i++}return n.toFixed(1)+' '+u[i]};
+const duration=s=>{s=Math.max(0,Math.floor(s||0));let d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);return d+'d '+h+'h '+m+'m'};
+async function refresh(){try{let r=await fetch('/api/status',{headers:{'X-Dashboard-Token':token}});if(!r.ok)throw Error('Dashboard authentication failed');let x=await r.json();
+document.getElementById('botState').textContent=x.bot_running?'● Bot online':'● Bot offline';
+document.getElementById('botState').style.color=x.bot_running?'#8cf0bd':'#ff9a9a';
+for(let [id,v] of Object.entries({completed:x.completed_jobs,active:x.active_jobs,failed:x.failed_jobs,total:fmtBytes(x.total_bytes),cpu:x.cpu_percent.toFixed(1)+'%',ram:x.ram_percent.toFixed(1)+'%',disk:x.disk_percent.toFixed(1)+'%',uptime:duration(x.uptime_seconds),systemUptime:duration(x.system_uptime),memoryDetail:fmtBytes(x.ram_used)+' / '+fmtBytes(x.ram_total)}))document.getElementById(id).textContent=v;
+for(let [id,v] of [['cpuBar',x.cpu_percent],['ramBar',x.ram_percent],['diskBar',x.disk_percent]])document.getElementById(id).style.width=Math.min(100,v)+'%';
+let jobs=Object.values(x.current||{}),el=document.getElementById('jobs');
+el.innerHTML=jobs.length?jobs.map(j=>`<div class="job"><div class="jobtop"><strong>${esc(j.phase||'Working')}</strong><span>${Number(j.percent||0).toFixed(1)}%</span></div><div class="muted">${esc(j.url||'')}</div><div class="bar"><i style="width:${Math.min(100,Number(j.percent||0))}%"></i></div><div class="muted">Speed: ${esc(j.speed||'—')} · ETA: ${esc(j.eta||'—')}</div></div>`).join(''):'<div class="empty">No active transfers right now.</div>';
+}catch(e){document.getElementById('botState').textContent='● '+e.message}}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+refresh();setInterval(refresh,3000);
+</script></body></html>
